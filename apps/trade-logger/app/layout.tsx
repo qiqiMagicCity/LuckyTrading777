@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ReactNode } from "react";
 import "./globals.css";
 import Nav from "@/components/Nav";
+import TopBar from "@/components/TopBar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,9 +18,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body
         className={`${inter.className} min-h-screen bg-slate-950 text-slate-100 antialiased`}
       >
+        <TopBar />
         <div className="flex min-h-screen flex-col">
           <Nav />
-          <main className="flex-1 px-4 py-10 sm:px-8">
+          <main className="flex-1 px-4 pb-10 pt-16 sm:px-8">
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
               {children}
             </div>
