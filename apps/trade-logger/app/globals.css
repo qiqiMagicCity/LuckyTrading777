@@ -4,6 +4,10 @@
 
 :root {
   color-scheme: dark;
+  --topbar-bg: #0a6b55;
+  --topbar-accent: #0e7e60;
+  --topbar-text: #ffffff;
+  --topbar-btn-text: #0a3a2f;
 }
 
 body {
