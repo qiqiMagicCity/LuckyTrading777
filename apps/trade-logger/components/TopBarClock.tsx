@@ -21,11 +21,11 @@ function fmtTime(tz: string, date: Date) {
 }
 
 function fmtDateWithWeek(date: Date, tz: string) {
-  const y = new Intl.DateTimeFormat("zh-CN", { year: "numeric", timeZone: tz }).format(date);
-  const m = new Intl.DateTimeFormat("zh-CN", { month: "2-digit", timeZone: tz }).format(date);
-  const d = new Intl.DateTimeFormat("zh-CN", { day: "2-digit", timeZone: tz }).format(date);
+  const year = new Intl.DateTimeFormat("zh-CN", { year: "numeric", timeZone: tz }).format(date);
+  const month = new Intl.DateTimeFormat("zh-CN", { month: "2-digit", timeZone: tz }).format(date);
+  const day = new Intl.DateTimeFormat("zh-CN", { day: "2-digit", timeZone: tz }).format(date);
   const week = new Intl.DateTimeFormat("zh-CN", { weekday: "short", timeZone: tz }).format(date);
-  return `${y}/${m}/${d} ${week}`;
+  return `${year}年/${month}月/${day}日 ${week}`;
 }
 
 export default function TopBarClock() {
@@ -40,16 +40,20 @@ export default function TopBarClock() {
 
   return (
     <div className="flex w-full items-center justify-between">
-      <div className="flex items-center gap-4 text-[14px] font-semibold">
+      {/* 左侧：三地时间，同一行，数字等宽 */}
+      <div
+        className="flex items-center gap-4 text-[15px] font-semibold"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
         {cities.map((city, index) => (
-          <div key={city.tz} className="flex items-center gap-2">
-            <span>{city.label}:</span>
-            <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtTime(city.tz, now)}</span>
-            {index < cities.length - 1 && <span className="mx-2">│</span>}
-          </div>
+          <span key={city.tz} className="whitespace-nowrap">
+            {city.label}: {fmtTime(city.tz, now)}
+            {index < cities.length - 1 ? " │" : ""}
+          </span>
         ))}
       </div>
-      <div className="text-[14px] font-extrabold">{rightDate}</div>
+      {/* 右侧：日期（更大更粗） */}
+      <div className="ml-4 whitespace-nowrap text-[16px] font-extrabold">{rightDate}</div>
     </div>
   );
 }

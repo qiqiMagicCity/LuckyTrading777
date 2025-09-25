@@ -1,23 +1,59 @@
-# PROJECT_PLAYBOOK
+"use client";
 
-> 每次 PR 前后可在此文件补充“进度/决策/变更”。本文件为长期同步用。
+import { useEffect, useState } from "react";
 
-## 一句话
-记录美股交易 → 交易流水驱动的账户/持仓指标；当前阶段搭建 UI 外壳与数据层。
+type CityClock = { label: string; tz: string };
 
-## 范围（当前步骤）
-- 固定顶栏 TopBar（深绿背景、白字、右侧按钮）。
-- 三地实时时钟：纽约 / 瓦伦西亚 / 上海，每秒刷新；右侧日期显示 “YYYY/MM/DD 周X”。
-- 其余页面保持空壳。
+const cities: CityClock[] = [
+  { label: "纽约", tz: "America/New_York" },
+  { label: "瓦伦西亚", tz: "Europe/Madrid" },
+  { label: "上海", tz: "Asia/Shanghai" },
+];
 
-## 进度日志（必更新）
-- YYYY-MM-DD: 初始化 TopBar（固定在顶部；按钮占位），未接入实时时钟与功能。
-- 2025-09-25: 顶栏换成标准配色；启用字体锐化；新增 TopBarClock 每秒刷新三地时间；右侧日期“YYYY/MM/DD 周X”。
+function fmtTime(tz: string, date: Date) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZone: tz,
+  }).format(date);
+}
 
-## 决策记录（必更新）
-- YYYY-MM-DD: 颜色通过 CSS 变量定义，后续可在 Settings 动态调整。
-- 2025-09-25: 多时区时间展示使用原生 Intl API，每秒刷新以保持准确。
+function fmtDateWithWeek(date: Date, tz: string) {
+  const year = new Intl.DateTimeFormat("zh-CN", { year: "numeric", timeZone: tz }).format(date);
+  const month = new Intl.DateTimeFormat("zh-CN", { month: "2-digit", timeZone: tz }).format(date);
+  const day = new Intl.DateTimeFormat("zh-CN", { day: "2-digit", timeZone: tz }).format(date);
+  const week = new Intl.DateTimeFormat("zh-CN", { weekday: "short", timeZone: tz }).format(date);
+  return `${year}年/${month}月/${day}日 ${week}`;
+}
 
-## 变更日志（必更新）
-- YYYY-MM-DD: 新增 TopBar 组件并应用于全局布局；新增本手册最小版本。
-- 2025-09-25: 顶栏引入 TopBarClock 组件与标准配色变量，按钮样式同步更新。
+export default function TopBarClock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const rightDate = fmtDateWithWeek(now, "Asia/Shanghai");
+
+  return (
+    <div className="flex w-full items-center justify-between">
+      {/* 左侧：三地时间，同一行，数字等宽 */}
+      <div
+        className="flex items-center gap-4 text-[15px] font-semibold"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {cities.map((city, index) => (
+          <span key={city.tz} className="whitespace-nowrap">
+            {city.label}: {fmtTime(city.tz, now)}
+            {index < cities.length - 1 ? " │" : ""}
+          </span>
+        ))}
+      </div>
+      {/* 右侧：日期（更大更粗） */}
+      <div className="ml-4 whitespace-nowrap text-[16px] font-extrabold">{rightDate}</div>
+    </div>
+  );
+}
