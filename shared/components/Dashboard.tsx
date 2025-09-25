@@ -2,13 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-type Zone = {
-  name: string;
-  timeZone: string;
-};
+/** ---------- 顶部时钟 & 顶栏 ---------- */
+
+type Zone = { name: string; timeZone: string };
+type Clock = { name: string; time: string };
 
 type ClockSnapshot = {
-  clocks: { name: string; time: string }[];
+  clocks: Clock[];
   dateText: string;
 };
 
@@ -16,7 +16,7 @@ function useClockData(): ClockSnapshot {
   const zones: Zone[] = useMemo(
     () => [
       { name: "纽约", timeZone: "America/New_York" },
-      { name: "加州", timeZone: "America/Los_Angeles" },
+      { name: "加州西海岸", timeZone: "America/Los_Angeles" },
       { name: "上海", timeZone: "Asia/Shanghai" },
     ],
     []
@@ -25,28 +25,26 @@ function useClockData(): ClockSnapshot {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setNow(new Date());
-    }, 1000);
+    const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
   const timeFormatter = useMemo(
     () =>
       Object.fromEntries(
-        zones.map((zone) => [
-          zone.timeZone,
+        zones.map((z) => [
+          z.timeZone,
           new Intl.DateTimeFormat("zh-CN", {
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",
             hour12: false,
-            timeZone: zone.timeZone,
+            timeZone: z.timeZone,
           }),
         ])
-      ),
+      ) as Record<string, Intl.DateTimeFormat>,
     [zones]
-  ) as Record<string, Intl.DateTimeFormat>;
+  );
 
   const dateFormatter = useMemo(
     () =>
@@ -68,9 +66,9 @@ function useClockData(): ClockSnapshot {
     []
   );
 
-  const clocks = zones.map((zone) => ({
-    name: zone.name,
-    time: timeFormatter[zone.timeZone].format(now),
+  const clocks: Clock[] = zones.map((z) => ({
+    name: z.name,
+    time: timeFormatter[z.timeZone].format(now),
   }));
 
   const dateText = `${dateFormatter.format(now)} ${weekdayFormatter
@@ -85,9 +83,9 @@ function HeaderBar({ clocks, dateText }: ClockSnapshot) {
     <div className="headerBar">
       <div className="headerInner">
         <div className="headerClocks">
-          {clocks.map((clock) => (
-            <span key={clock.name}>
-              {clock.name}: {clock.time}
+          {clocks.map((c) => (
+            <span key={c.name}>
+              {c.name}: {c.time}
             </span>
           ))}
         </div>
@@ -101,6 +99,8 @@ function HeaderBar({ clocks, dateText }: ClockSnapshot) {
     </div>
   );
 }
+
+/** ---------- KPI / 统计卡片 ---------- */
 
 type Tone = "up" | "down" | "";
 
@@ -136,12 +136,14 @@ function StatsGrid() {
   ];
   return (
     <div className="grid stats section">
-      {items.map((item) => (
-        <KPI key={item.title} title={item.title} value={item.value} tone={item.tone} />
+      {items.map((it) => (
+        <KPI key={it.title} title={it.title} value={it.value} tone={it.tone} />
       ))}
     </div>
   );
 }
+
+/** ---------- Tabs ---------- */
 
 type TabKey = "当前持仓" | "交易分析";
 
@@ -161,6 +163,8 @@ function Tabs({ active, onChange }: { active: TabKey; onChange: (tab: TabKey) =>
   );
 }
 
+/** ---------- 持仓表 ---------- */
+
 type PositionRow = {
   code: string;
   cn: string;
@@ -176,11 +180,11 @@ type PositionRow = {
 
 function PositionsTable({ rows }: { rows: PositionRow[] }) {
   const totals = rows.reduce(
-    (acc, row) => {
-      acc.qty += row.qty;
-      acc.pnl += row.pnl;
-      acc.win += row.win;
-      acc.times += row.times;
+    (acc, r) => {
+      acc.qty += r.qty;
+      acc.pnl += r.pnl;
+      acc.win += r.win;
+      acc.times += r.times;
       return acc;
     },
     { qty: 0, pnl: 0, win: 0, times: 0 }
@@ -200,7 +204,7 @@ function PositionsTable({ rows }: { rows: PositionRow[] }) {
           <span>当前持仓</span>
           <span style={{ color: "var(--muted)", fontWeight: 500 }}>交易分析</span>
         </div>
-        <div style={{ color: "var(--muted)", fontSize: 12 }}>最近更新：05:35:12</div>
+        <div style={{ color: "var(--muted)", fontSize: 12 }}>最近更新：—</div>
       </div>
       <div className="tableWrap">
         <table>
@@ -221,8 +225,8 @@ function PositionsTable({ rows }: { rows: PositionRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.code}>
+            {rows.map((r) => (
+              <tr key={r.code}>
                 <td>
                   <div
                     style={{
@@ -237,25 +241,25 @@ function PositionsTable({ rows }: { rows: PositionRow[] }) {
                       fontWeight: 700,
                     }}
                   >
-                    {row.code.slice(0, 2)}
+                    {r.code.slice(0, 2)}
                   </div>
                 </td>
-                <td>{row.code}</td>
-                <td style={{ textAlign: "left" }}>{row.cn}</td>
-                <td>{row.price.toFixed(2)}</td>
-                <td>{row.qty.toLocaleString()}</td>
-                <td>{row.avg.toFixed(2)}</td>
-                <td>{row.last.toFixed(2)}</td>
-                <td className={row.pnl >= 0 ? "up" : "down"}>
-                  {row.pnl >= 0 ? `+${row.pnl.toFixed(2)}` : row.pnl.toFixed(2)}
+                <td>{r.code}</td>
+                <td style={{ textAlign: "left" }}>{r.cn}</td>
+                <td>{r.price.toFixed(2)}</td>
+                <td>{r.qty.toLocaleString()}</td>
+                <td>{r.avg.toFixed(2)}</td>
+                <td>{r.last.toFixed(2)}</td>
+                <td className={r.pnl >= 0 ? "up" : "down"}>
+                  {r.pnl >= 0 ? `+${r.pnl.toFixed(2)}` : r.pnl.toFixed(2)}
                 </td>
-                <td className={row.rate >= 0 ? "up" : "down"}>
-                  {row.rate >= 0 ? `+${row.rate.toFixed(2)}%` : `${row.rate.toFixed(2)}%`}
+                <td className={r.rate >= 0 ? "up" : "down"}>
+                  {r.rate >= 0 ? `+${r.rate.toFixed(2)}%` : `${r.rate.toFixed(2)}%`}
                 </td>
-                <td className={row.win >= 0 ? "up" : "down"}>
-                  {row.win >= 0 ? `+${row.win.toFixed(2)}` : row.win.toFixed(2)}
+                <td className={r.win >= 0 ? "up" : "down"}>
+                  {r.win >= 0 ? `+${r.win.toFixed(2)}` : r.win.toFixed(2)}
                 </td>
-                <td>{row.times}</td>
+                <td>{r.times}</td>
                 <td>
                   <a href="#">详情</a>
                 </td>
@@ -279,7 +283,7 @@ function PositionsTable({ rows }: { rows: PositionRow[] }) {
                 {totals.win >= 0 ? `+${totals.win.toFixed(2)}` : totals.win.toFixed(2)}
               </td>
               <td>{totals.times}</td>
-              <td></td>
+              <td />
             </tr>
           </tfoot>
         </table>
@@ -287,6 +291,8 @@ function PositionsTable({ rows }: { rows: PositionRow[] }) {
     </div>
   );
 }
+
+/** ---------- 交易分析占位 ---------- */
 
 function AnalysisPlaceholder() {
   return (
@@ -298,6 +304,8 @@ function AnalysisPlaceholder() {
     </div>
   );
 }
+
+/** ---------- 交易记录表 ---------- */
 
 type Trade = {
   date: string;
@@ -313,9 +321,9 @@ type Trade = {
 
 function TradesTable({ rows }: { rows: Trade[] }) {
   const totals = rows.reduce(
-    (acc, row) => {
-      acc.qty += row.qty;
-      acc.amount += row.amount;
+    (acc, r) => {
+      acc.qty += r.qty;
+      acc.amount += r.amount;
       return acc;
     },
     { qty: 0, amount: 0 }
@@ -345,19 +353,19 @@ function TradesTable({ rows }: { rows: Trade[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => (
-              <tr key={`${row.code}-${index}`}>
+            {rows.map((r, i) => (
+              <tr key={`${r.code}-${i}`}>
                 <td style={{ textAlign: "left" }}>
-                  {row.date} {row.time}
+                  {r.date} {r.time}
                 </td>
-                <td>{row.week}</td>
-                <td>{row.code}</td>
-                <td style={{ textAlign: "left" }}>{row.cn}</td>
-                <td className={row.side === "BUY" ? "up" : "down"}>{row.side}</td>
-                <td>{row.price.toFixed(2)}</td>
-                <td>{row.qty}</td>
+                <td>{r.week}</td>
+                <td>{r.code}</td>
+                <td style={{ textAlign: "left" }}>{r.cn}</td>
+                <td className={r.side === "BUY" ? "up" : "down"}>{r.side}</td>
+                <td>{r.price.toFixed(2)}</td>
+                <td>{r.qty}</td>
                 <td>
-                  {row.amount.toLocaleString(undefined, {
+                  {r.amount.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
@@ -374,8 +382,13 @@ function TradesTable({ rows }: { rows: Trade[] }) {
                 合计
               </td>
               <td>{totals.qty}</td>
-              <td>{totals.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              <td></td>
+              <td>
+                {totals.amount.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </td>
+              <td />
             </tr>
           </tfoot>
         </table>
@@ -383,6 +396,8 @@ function TradesTable({ rows }: { rows: Trade[] }) {
     </div>
   );
 }
+
+/** ---------- 个股标签 ---------- */
 
 function ChipRow({
   chips,
@@ -411,195 +426,31 @@ function ChipRow({
   );
 }
 
+/** ---------- Mock 数据 ---------- */
+
 const POSITION_ROWS: PositionRow[] = [
-  {
-    code: "TSDD",
-    cn: "所罗门实验科技",
-    price: 10.22,
-    qty: 10000,
-    avg: 11.04,
-    last: 11.04,
-    pnl: -3200,
-    rate: -7.43,
-    win: -3200,
-    times: 12,
-  },
-  {
-    code: "BA",
-    cn: "波音",
-    price: 215.1,
-    qty: 350,
-    avg: 216.27,
-    last: 216.27,
-    pnl: -409.5,
-    rate: -0.54,
-    win: -409.5,
-    times: 8,
-  },
-  {
-    code: "GOOGL",
-    cn: "谷歌A",
-    price: 247.14,
-    qty: 400,
-    avg: 170.73,
-    last: 170.73,
-    pnl: 30564,
-    rate: 44.75,
-    win: 30564,
-    times: 18,
-  },
-  {
-    code: "AMD",
-    cn: "超威半导体",
-    price: 160.88,
-    qty: 400,
-    avg: 151.72,
-    last: 151.72,
-    pnl: 3480.8,
-    rate: 6.04,
-    win: 3480.8,
-    times: 5,
-  },
-  {
-    code: "PYPL",
-    cn: "贝宝",
-    price: 68.54,
-    qty: 5500,
-    avg: 68.54,
-    last: 68.54,
-    pnl: 0,
-    rate: 0,
-    win: 0,
-    times: 21,
-  },
-  {
-    code: "UAL",
-    cn: "联合航空",
-    price: 101.39,
-    qty: 300,
-    avg: 101.03,
-    last: 103.7,
-    pnl: -693,
-    rate: -2.37,
-    win: -693,
-    times: 9,
-  },
-  {
-    code: "DIS",
-    cn: "迪士尼",
-    price: 113.43,
-    qty: 250,
-    avg: 116.83,
-    last: 116.83,
-    pnl: -850,
-    rate: -2.91,
-    win: -850,
-    times: 14,
-  },
-  {
-    code: "NVDL",
-    cn: "所罗门类多空热试",
-    price: 84.41,
-    qty: 340,
-    avg: 84.12,
-    last: 84.12,
-    pnl: 95.7,
-    rate: 0.34,
-    win: 95.7,
-    times: 3,
-  },
+  { code: "TSDD", cn: "所罗门实验科技", price: 10.22, qty: 10000, avg: 11.04, last: 11.04, pnl: -3200, rate: -7.43, win: -3200, times: 12 },
+  { code: "BA", cn: "波音", price: 215.1, qty: 350, avg: 216.27, last: 216.27, pnl: -409.5, rate: -0.54, win: -409.5, times: 8 },
+  { code: "GOOGL", cn: "谷歌A", price: 247.14, qty: 400, avg: 170.73, last: 170.73, pnl: 30564, rate: 44.75, win: 30564, times: 18 },
+  { code: "AMD", cn: "超威半导体", price: 160.88, qty: 400, avg: 151.72, last: 151.72, pnl: 3480.8, rate: 6.04, win: 3480.8, times: 5 },
+  { code: "PYPL", cn: "贝宝", price: 68.54, qty: 5500, avg: 68.54, last: 68.54, pnl: 0, rate: 0, win: 0, times: 21 },
+  { code: "UAL", cn: "联合航空", price: 101.39, qty: 300, avg: 101.03, last: 103.7, pnl: -693, rate: -2.37, win: -693, times: 9 },
+  { code: "DIS", cn: "迪士尼", price: 113.43, qty: 250, avg: 116.83, last: 116.83, pnl: -850, rate: -2.91, win: -850, times: 14 },
+  { code: "NVDL", cn: "所罗门类多空热试", price: 84.41, qty: 340, avg: 84.12, last: 84.12, pnl: 95.7, rate: 0.34, win: 95.7, times: 3 },
 ];
 
 const TRADE_ROWS: Trade[] = [
-  {
-    date: "2025-05-23",
-    time: "05:22:24",
-    week: "Fri",
-    code: "NVDL",
-    cn: "所罗门类多空热试",
-    side: "BUY",
-    price: 84.12,
-    qty: 330,
-    amount: 27759.6,
-  },
-  {
-    date: "2025-05-23",
-    time: "05:21:59",
-    week: "Fri",
-    code: "DIS",
-    cn: "迪士尼",
-    side: "BUY",
-    price: 116.83,
-    qty: 250,
-    amount: 29207.5,
-  },
-  {
-    date: "2025-05-23",
-    time: "05:21:20",
-    week: "Fri",
-    code: "UAL",
-    cn: "联合航空",
-    side: "BUY",
-    price: 103.7,
-    qty: 300,
-    amount: 31110,
-  },
-  {
-    date: "2025-05-23",
-    time: "05:21:20",
-    week: "Fri",
-    code: "PYPL",
-    cn: "贝宝",
-    side: "BUY",
-    price: 68.54,
-    qty: 5555,
-    amount: 38039.7,
-  },
-  {
-    date: "2025-05-20",
-    time: "21:10:20",
-    week: "Tue",
-    code: "AMD",
-    cn: "超威半导体",
-    side: "SELL",
-    price: 152.5,
-    qty: 200,
-    amount: 30500,
-  },
-  {
-    date: "2025-05-18",
-    time: "19:04:12",
-    week: "Sun",
-    code: "BA",
-    cn: "波音",
-    side: "SELL",
-    price: 218.4,
-    qty: 150,
-    amount: 32760,
-  },
-  {
-    date: "2025-05-18",
-    time: "18:32:02",
-    week: "Sun",
-    code: "GOOGL",
-    cn: "谷歌A",
-    side: "SELL",
-    price: 244.5,
-    qty: 180,
-    amount: 44010,
-  },
-  {
-    date: "2025-05-16",
-    time: "15:18:44",
-    week: "Fri",
-    code: "TSDD",
-    cn: "所罗门实验科技",
-    side: "SELL",
-    price: 11.04,
-    qty: 2600,
-    amount: 28704,
-  },
+  { date: "2025-05-23", time: "05:22:24", week: "Fri", code: "NVDL", cn: "所罗门类多空热试", side: "BUY", price: 84.12, qty: 330, amount: 27759.6 },
+  { date: "2025-05-23", time: "05:21:59", week: "Fri", code: "DIS", cn: "迪士尼", side: "BUY", price: 116.83, qty: 250, amount: 29207.5 },
+  { date: "2025-05-23", time: "05:21:20", week: "Fri", code: "UAL", cn: "联合航空", side: "BUY", price: 103.7, qty: 300, amount: 31110 },
+  { date: "2025-05-23", time: "05:21:20", week: "Fri", code: "PYPL", cn: "贝宝", side: "BUY", price: 68.54, qty: 5555, amount: 38039.7 },
+  { date: "2025-05-20", time: "21:10:20", week: "Tue", code: "AMD", cn: "超威半导体", side: "SELL", price: 152.5, qty: 200, amount: 30500 },
+  { date: "2025-05-18", time: "19:04:12", week: "Sun", code: "BA", cn: "波音", side: "SELL", price: 218.4, qty: 150, amount: 32760 },
+  { date: "2025-05-18", time: "18:32:02", week: "Sun", code: "GOOGL", cn: "谷歌A", side: "SELL", price: 244.5, qty: 180, amount: 44010 },
+  { date: "2025-05-16", time: "15:18:44", week: "Fri", code: "TSDD", cn: "所罗门实验科技", side: "SELL", price: 11.04, qty: 2600, amount: 28704 },
 ];
+
+/** ---------- 页面 ---------- */
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabKey>("当前持仓");
