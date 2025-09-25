@@ -40,6 +40,7 @@ export default function TopBarClock() {
 
   return (
     <div className="flex w-full items-center justify-between">
+      {/* 左侧：三地时间，同一行，数字等宽 */}
       <div
         className="flex items-center gap-4 text-[15px] font-semibold"
         style={{ fontVariantNumeric: "tabular-nums" }}
@@ -51,6 +52,7 @@ export default function TopBarClock() {
           </span>
         ))}
       </div>
+      {/* 右侧：日期（更大更粗） */}
       <div className="ml-4 whitespace-nowrap text-[16px] font-extrabold">{rightDate}</div>
     </div>
   );

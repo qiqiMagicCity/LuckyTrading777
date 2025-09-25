@@ -9,9 +9,12 @@ export default function TopBar() {
     >
       <div className="mx-auto flex h-12 w-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
         <div className="flex w-full items-center gap-6">
+          {/* 左侧：仅三地时钟 */}
           <div className="flex min-w-0 flex-1">
             <TopBarClock />
           </div>
+
+          {/* 右侧：按钮（浅绿底 + 白字） */}
           <div className="flex items-center gap-3">
             <Link
               href="/import"
