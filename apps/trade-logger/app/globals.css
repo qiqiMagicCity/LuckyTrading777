@@ -4,14 +4,22 @@
 
 :root {
   color-scheme: dark;
-  --topbar-bg: #0a6b55;
-  --topbar-accent: #0e7e60;
-  --topbar-text: #ffffff;
-  --topbar-btn-text: #0a3a2f;
+  --topbar-bg: #0a6b55;      /* 深绿（标准） */
+  --topbar-accent: #17c27e;  /* 浅绿按钮底 */
+  --topbar-text: #ffffff;    /* 白字 */
+  --topbar-btntext: #0a3a2f; /* 按钮文字深绿 */
+}
+
+/* 字体锐化，防止发虚 */
+html,
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  background-color: #020617;
+  background-color: #020617; /* 保留你现有的背景色 */
 }
 
 a {
