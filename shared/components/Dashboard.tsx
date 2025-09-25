@@ -2,45 +2,49 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-type Zone = {
-  name: string;
-  timeZone: string;
+/** ---------- 顶部时钟 & 顶栏 ---------- */
+
+type Zone = { name: string; timeZone: string };
+type Clock = { name: string; time: string };
+
+type ClockSnapshot = {
+  clocks: Clock[];
+  dateText: string;
 };
 
-function ClockRow() {
+function useClockData(): ClockSnapshot {
   const zones: Zone[] = useMemo(
     () => [
       { name: "纽约", timeZone: "America/New_York" },
-      { name: "加州", timeZone: "America/Los_Angeles" },
+      { name: "加州西海岸", timeZone: "America/Los_Angeles" },
       { name: "上海", timeZone: "Asia/Shanghai" },
     ],
     []
   );
+
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setNow(new Date());
-    }, 1000);
+    const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
   const timeFormatter = useMemo(
     () =>
       Object.fromEntries(
-        zones.map((zone) => [
-          zone.timeZone,
+        zones.map((z) => [
+          z.timeZone,
           new Intl.DateTimeFormat("zh-CN", {
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",
             hour12: false,
-            timeZone: zone.timeZone,
+            timeZone: z.timeZone,
           }),
         ])
-      ),
+      ) as Record<string, Intl.DateTimeFormat>,
     [zones]
-  ) as Record<string, Intl.DateTimeFormat>;
+  );
 
   const dateFormatter = useMemo(
     () =>
@@ -62,29 +66,47 @@ function ClockRow() {
     []
   );
 
+  const clocks: Clock[] = zones.map((z) => ({
+    name: z.name,
+    time: timeFormatter[z.timeZone].format(now),
+  }));
+
   const dateText = `${dateFormatter.format(now)} ${weekdayFormatter
     .format(now)
     .replace("星期", "周")}`;
 
+  return { clocks, dateText };
+}
+
+function HeaderBar({ clocks, dateText }: ClockSnapshot) {
   return (
-    <div className="header">
-      <div className="clocks">
-        {zones.map((zone) => (
-          <span key={zone.timeZone}>
-            {zone.name}: {timeFormatter[zone.timeZone].format(now)}
-          </span>
-        ))}
+    <div className="headerBar">
+      <div className="headerInner">
+        <div className="headerClocks">
+          {clocks.map((c) => (
+            <span key={c.name}>
+              {c.name}: {c.time}
+            </span>
+          ))}
+        </div>
+        <div className="headerActions">
+          <button className="btn">导入</button>
+          <button className="btn">导出</button>
+          <button className="btn">导入报价</button>
+          <div className="headerDate">{dateText}</div>
+        </div>
       </div>
-      <div className="date">{dateText}</div>
     </div>
   );
 }
+
+/** ---------- KPI / 统计卡片 ---------- */
 
 type Tone = "up" | "down" | "";
 
 function KPI({ title, value, tone }: { title: string; value: string; tone?: Tone }) {
   return (
-    <div className="panel">
+    <div className="card">
       <div className="kpiTitle">{title}</div>
       <div className={`kpiValue ${tone === "up" ? "up" : tone === "down" ? "down" : ""}`}>
         {value}
@@ -113,19 +135,21 @@ function StatsGrid() {
     { title: "现金余额", value: "$158,202.18" },
   ];
   return (
-    <div className="grid stats">
-      {items.map((item) => (
-        <KPI key={item.title} title={item.title} value={item.value} tone={item.tone} />
+    <div className="grid stats section">
+      {items.map((it) => (
+        <KPI key={it.title} title={it.title} value={it.value} tone={it.tone} />
       ))}
     </div>
   );
 }
 
+/** ---------- Tabs ---------- */
+
 type TabKey = "当前持仓" | "交易分析";
 
 function Tabs({ active, onChange }: { active: TabKey; onChange: (tab: TabKey) => void }) {
   return (
-    <div className="tabs">
+    <div className="tabs section">
       {(["当前持仓", "交易分析"] as TabKey[]).map((tab) => (
         <div
           key={tab}
@@ -138,6 +162,8 @@ function Tabs({ active, onChange }: { active: TabKey; onChange: (tab: TabKey) =>
     </div>
   );
 }
+
+/** ---------- 持仓表 ---------- */
 
 type PositionRow = {
   code: string;
@@ -153,9 +179,34 @@ type PositionRow = {
 };
 
 function PositionsTable({ rows }: { rows: PositionRow[] }) {
+  const totals = rows.reduce(
+    (acc, r) => {
+      acc.qty += r.qty;
+      acc.pnl += r.pnl;
+      acc.win += r.win;
+      acc.times += r.times;
+      return acc;
+    },
+    { qty: 0, pnl: 0, win: 0, times: 0 }
+  );
+
   return (
-    <div className="panel" style={{ marginTop: 12 }}>
-      <div className="tableWrap" style={{ marginTop: 4 }}>
+    <div className="panel section">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ display: "flex", gap: 12, fontWeight: 700 }}>
+          <span>当前持仓</span>
+          <span style={{ color: "var(--muted)", fontWeight: 500 }}>交易分析</span>
+        </div>
+        <div style={{ color: "var(--muted)", fontSize: 12 }}>最近更新：—</div>
+      </div>
+      <div className="tableWrap">
         <table>
           <thead>
             <tr>
@@ -174,8 +225,8 @@ function PositionsTable({ rows }: { rows: PositionRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.code}>
+            {rows.map((r) => (
+              <tr key={r.code}>
                 <td>
                   <div
                     style={{
@@ -190,42 +241,62 @@ function PositionsTable({ rows }: { rows: PositionRow[] }) {
                       fontWeight: 700,
                     }}
                   >
-                    {row.code.slice(0, 2)}
+                    {r.code.slice(0, 2)}
                   </div>
                 </td>
-                <td>{row.code}</td>
-                <td style={{ textAlign: "left" }}>{row.cn}</td>
-                <td>{row.price.toFixed(2)}</td>
-                <td>{row.qty.toLocaleString()}</td>
-                <td>{row.avg.toFixed(2)}</td>
-                <td>{row.last.toFixed(2)}</td>
-                <td className={row.pnl >= 0 ? "up" : "down"}>
-                  {row.pnl >= 0 ? `+${row.pnl.toFixed(2)}` : row.pnl.toFixed(2)}
+                <td>{r.code}</td>
+                <td style={{ textAlign: "left" }}>{r.cn}</td>
+                <td>{r.price.toFixed(2)}</td>
+                <td>{r.qty.toLocaleString()}</td>
+                <td>{r.avg.toFixed(2)}</td>
+                <td>{r.last.toFixed(2)}</td>
+                <td className={r.pnl >= 0 ? "up" : "down"}>
+                  {r.pnl >= 0 ? `+${r.pnl.toFixed(2)}` : r.pnl.toFixed(2)}
                 </td>
-                <td className={row.rate >= 0 ? "up" : "down"}>
-                  {row.rate >= 0
-                    ? `+${row.rate.toFixed(2)}%`
-                    : `${row.rate.toFixed(2)}%`}
+                <td className={r.rate >= 0 ? "up" : "down"}>
+                  {r.rate >= 0 ? `+${r.rate.toFixed(2)}%` : `${r.rate.toFixed(2)}%`}
                 </td>
-                <td className={row.win >= 0 ? "up" : "down"}>
-                  {row.win >= 0 ? `+${row.win.toFixed(2)}` : row.win.toFixed(2)}
+                <td className={r.win >= 0 ? "up" : "down"}>
+                  {r.win >= 0 ? `+${r.win.toFixed(2)}` : r.win.toFixed(2)}
                 </td>
-                <td>{row.times}</td>
+                <td>{r.times}</td>
                 <td>
                   <a href="#">详情</a>
                 </td>
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={4} style={{ textAlign: "left" }}>
+                合计
+              </td>
+              <td>{totals.qty.toLocaleString()}</td>
+              <td colSpan={2} style={{ textAlign: "center", color: "var(--muted)" }}>
+                --
+              </td>
+              <td className={totals.pnl >= 0 ? "up" : "down"}>
+                {totals.pnl >= 0 ? `+${totals.pnl.toFixed(2)}` : totals.pnl.toFixed(2)}
+              </td>
+              <td style={{ color: "var(--muted)" }}>--</td>
+              <td className={totals.win >= 0 ? "up" : "down"}>
+                {totals.win >= 0 ? `+${totals.win.toFixed(2)}` : totals.win.toFixed(2)}
+              </td>
+              <td>{totals.times}</td>
+              <td />
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
   );
 }
 
+/** ---------- 交易分析占位 ---------- */
+
 function AnalysisPlaceholder() {
   return (
-    <div className="panel" style={{ marginTop: 12, minHeight: 200 }}>
+    <div className="panel section" style={{ minHeight: 200 }}>
       <div style={{ fontWeight: 700, marginBottom: 8 }}>交易分析</div>
       <p style={{ color: "var(--muted)", margin: 0 }}>
         即将上线：盈亏拆解、策略胜率、持仓周期等图表分析。
@@ -233,6 +304,8 @@ function AnalysisPlaceholder() {
     </div>
   );
 }
+
+/** ---------- 交易记录表 ---------- */
 
 type Trade = {
   date: string;
@@ -247,15 +320,24 @@ type Trade = {
 };
 
 function TradesTable({ rows }: { rows: Trade[] }) {
+  const totals = rows.reduce(
+    (acc, r) => {
+      acc.qty += r.qty;
+      acc.amount += r.amount;
+      return acc;
+    },
+    { qty: 0, amount: 0 }
+  );
+
   return (
-    <div className="panel" style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+    <div className="panel section">
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
         <div style={{ fontWeight: 700 }}>交易记录</div>
         <a href="#" style={{ color: "var(--muted)" }}>
           查看全部
         </a>
       </div>
-      <div className="tableWrap" style={{ marginTop: 8 }}>
+      <div className="tableWrap">
         <table>
           <thead>
             <tr>
@@ -271,19 +353,19 @@ function TradesTable({ rows }: { rows: Trade[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => (
-              <tr key={`${row.code}-${index}`}>
+            {rows.map((r, i) => (
+              <tr key={`${r.code}-${i}`}>
                 <td style={{ textAlign: "left" }}>
-                  {row.date} {row.time}
+                  {r.date} {r.time}
                 </td>
-                <td>{row.week}</td>
-                <td>{row.code}</td>
-                <td style={{ textAlign: "left" }}>{row.cn}</td>
-                <td className={row.side === "BUY" ? "up" : "down"}>{row.side}</td>
-                <td>{row.price.toFixed(2)}</td>
-                <td>{row.qty}</td>
+                <td>{r.week}</td>
+                <td>{r.code}</td>
+                <td style={{ textAlign: "left" }}>{r.cn}</td>
+                <td className={r.side === "BUY" ? "up" : "down"}>{r.side}</td>
+                <td>{r.price.toFixed(2)}</td>
+                <td>{r.qty}</td>
                 <td>
-                  {row.amount.toLocaleString(undefined, {
+                  {r.amount.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
@@ -294,11 +376,28 @@ function TradesTable({ rows }: { rows: Trade[] }) {
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={6} style={{ textAlign: "left" }}>
+                合计
+              </td>
+              <td>{totals.qty}</td>
+              <td>
+                {totals.amount.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </td>
+              <td />
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
   );
 }
+
+/** ---------- 个股标签 ---------- */
 
 function ChipRow({
   chips,
@@ -310,8 +409,8 @@ function ChipRow({
   onSelect: (chip: string) => void;
 }) {
   return (
-    <div className="panel" style={{ marginTop: 12 }}>
-      <div style={{ fontWeight: 700, marginBottom: 8 }}>个股情况</div>
+    <div className="panel section">
+      <div style={{ fontWeight: 700, marginBottom: 12 }}>个股情况</div>
       <div className="badgeRow">
         {chips.map((chip) => (
           <div
@@ -327,215 +426,58 @@ function ChipRow({
   );
 }
 
+/** ---------- Mock 数据 ---------- */
+
 const POSITION_ROWS: PositionRow[] = [
-  {
-    code: "TSDD",
-    cn: "所罗门实验科技",
-    price: 10.22,
-    qty: 10000,
-    avg: 11.04,
-    last: 11.04,
-    pnl: -3200,
-    rate: -7.43,
-    win: -3200,
-    times: 12,
-  },
-  {
-    code: "BA",
-    cn: "波音",
-    price: 215.1,
-    qty: 350,
-    avg: 216.27,
-    last: 216.27,
-    pnl: -409.5,
-    rate: -0.54,
-    win: -409.5,
-    times: 8,
-  },
-  {
-    code: "GOOGL",
-    cn: "谷歌A",
-    price: 247.14,
-    qty: 400,
-    avg: 170.73,
-    last: 170.73,
-    pnl: 30564,
-    rate: 44.75,
-    win: 30564,
-    times: 18,
-  },
-  {
-    code: "AMD",
-    cn: "超威半导体",
-    price: 160.88,
-    qty: 400,
-    avg: 151.72,
-    last: 151.72,
-    pnl: 3480.8,
-    rate: 6.04,
-    win: 3480.8,
-    times: 5,
-  },
-  {
-    code: "PYPL",
-    cn: "贝宝",
-    price: 68.54,
-    qty: 5500,
-    avg: 68.54,
-    last: 68.54,
-    pnl: 0,
-    rate: 0,
-    win: 0,
-    times: 21,
-  },
-  {
-    code: "UAL",
-    cn: "联合航空",
-    price: 101.39,
-    qty: 300,
-    avg: 101.03,
-    last: 103.7,
-    pnl: -693,
-    rate: -2.37,
-    win: -693,
-    times: 9,
-  },
-  {
-    code: "DIS",
-    cn: "迪士尼",
-    price: 113.43,
-    qty: 250,
-    avg: 116.83,
-    last: 116.83,
-    pnl: -850,
-    rate: -2.91,
-    win: -850,
-    times: 14,
-  },
-  {
-    code: "NVDL",
-    cn: "所罗门类多空热试",
-    price: 84.41,
-    qty: 340,
-    avg: 84.12,
-    last: 84.12,
-    pnl: 95.7,
-    rate: 0.34,
-    win: 95.7,
-    times: 3,
-  },
+  { code: "TSDD", cn: "所罗门实验科技", price: 10.22, qty: 10000, avg: 11.04, last: 11.04, pnl: -3200, rate: -7.43, win: -3200, times: 12 },
+  { code: "BA", cn: "波音", price: 215.1, qty: 350, avg: 216.27, last: 216.27, pnl: -409.5, rate: -0.54, win: -409.5, times: 8 },
+  { code: "GOOGL", cn: "谷歌A", price: 247.14, qty: 400, avg: 170.73, last: 170.73, pnl: 30564, rate: 44.75, win: 30564, times: 18 },
+  { code: "AMD", cn: "超威半导体", price: 160.88, qty: 400, avg: 151.72, last: 151.72, pnl: 3480.8, rate: 6.04, win: 3480.8, times: 5 },
+  { code: "PYPL", cn: "贝宝", price: 68.54, qty: 5500, avg: 68.54, last: 68.54, pnl: 0, rate: 0, win: 0, times: 21 },
+  { code: "UAL", cn: "联合航空", price: 101.39, qty: 300, avg: 101.03, last: 103.7, pnl: -693, rate: -2.37, win: -693, times: 9 },
+  { code: "DIS", cn: "迪士尼", price: 113.43, qty: 250, avg: 116.83, last: 116.83, pnl: -850, rate: -2.91, win: -850, times: 14 },
+  { code: "NVDL", cn: "所罗门类多空热试", price: 84.41, qty: 340, avg: 84.12, last: 84.12, pnl: 95.7, rate: 0.34, win: 95.7, times: 3 },
 ];
 
 const TRADE_ROWS: Trade[] = [
-  {
-    date: "2025-05-23",
-    time: "05:22:24",
-    week: "Fri",
-    code: "NVDL",
-    cn: "所罗门类多空热试",
-    side: "BUY",
-    price: 84.12,
-    qty: 330,
-    amount: 27759.6,
-  },
-  {
-    date: "2025-05-23",
-    time: "05:21:59",
-    week: "Fri",
-    code: "DIS",
-    cn: "迪士尼",
-    side: "BUY",
-    price: 116.83,
-    qty: 250,
-    amount: 29207.5,
-  },
-  {
-    date: "2025-05-23",
-    time: "05:21:20",
-    week: "Fri",
-    code: "UAL",
-    cn: "联合航空",
-    side: "BUY",
-    price: 103.7,
-    qty: 300,
-    amount: 31110,
-  },
-  {
-    date: "2025-05-23",
-    time: "05:21:20",
-    week: "Fri",
-    code: "PYPL",
-    cn: "贝宝",
-    side: "BUY",
-    price: 68.54,
-    qty: 5555,
-    amount: 38039.7,
-  },
-  {
-    date: "2025-05-20",
-    time: "21:10:20",
-    week: "Tue",
-    code: "AMD",
-    cn: "超威半导体",
-    side: "SELL",
-    price: 152.5,
-    qty: 200,
-    amount: 30500,
-  },
-  {
-    date: "2025-05-18",
-    time: "19:04:12",
-    week: "Sun",
-    code: "BA",
-    cn: "波音",
-    side: "SELL",
-    price: 218.4,
-    qty: 150,
-    amount: 32760,
-  },
-  {
-    date: "2025-05-18",
-    time: "18:32:02",
-    week: "Sun",
-    code: "GOOGL",
-    cn: "谷歌A",
-    side: "SELL",
-    price: 244.5,
-    qty: 180,
-    amount: 44010,
-  },
-  {
-    date: "2025-05-16",
-    time: "15:18:44",
-    week: "Fri",
-    code: "TSDD",
-    cn: "所罗门实验科技",
-    side: "SELL",
-    price: 11.04,
-    qty: 2600,
-    amount: 28704,
-  },
+  { date: "2025-05-23", time: "05:22:24", week: "Fri", code: "NVDL", cn: "所罗门类多空热试", side: "BUY", price: 84.12, qty: 330, amount: 27759.6 },
+  { date: "2025-05-23", time: "05:21:59", week: "Fri", code: "DIS", cn: "迪士尼", side: "BUY", price: 116.83, qty: 250, amount: 29207.5 },
+  { date: "2025-05-23", time: "05:21:20", week: "Fri", code: "UAL", cn: "联合航空", side: "BUY", price: 103.7, qty: 300, amount: 31110 },
+  { date: "2025-05-23", time: "05:21:20", week: "Fri", code: "PYPL", cn: "贝宝", side: "BUY", price: 68.54, qty: 5555, amount: 38039.7 },
+  { date: "2025-05-20", time: "21:10:20", week: "Tue", code: "AMD", cn: "超威半导体", side: "SELL", price: 152.5, qty: 200, amount: 30500 },
+  { date: "2025-05-18", time: "19:04:12", week: "Sun", code: "BA", cn: "波音", side: "SELL", price: 218.4, qty: 150, amount: 32760 },
+  { date: "2025-05-18", time: "18:32:02", week: "Sun", code: "GOOGL", cn: "谷歌A", side: "SELL", price: 244.5, qty: 180, amount: 44010 },
+  { date: "2025-05-16", time: "15:18:44", week: "Fri", code: "TSDD", cn: "所罗门实验科技", side: "SELL", price: 11.04, qty: 2600, amount: 28704 },
 ];
+
+/** ---------- 页面 ---------- */
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabKey>("当前持仓");
   const [activeChip, setActiveChip] = useState<string>(POSITION_ROWS[0]?.code ?? "");
+  const clockSnapshot = useClockData();
 
   return (
-    <div className="container">
-      <ClockRow />
-      <StatsGrid />
-      <Tabs active={activeTab} onChange={setActiveTab} />
-      {activeTab === "当前持仓" ? (
-        <PositionsTable rows={POSITION_ROWS} />
-      ) : (
-        <AnalysisPlaceholder />
-      )}
-      <ChipRow chips={POSITION_ROWS.map((row) => row.code)} active={activeChip} onSelect={setActiveChip} />
-      <TradesTable rows={TRADE_ROWS} />
+    <>
+      <HeaderBar {...clockSnapshot} />
+      <div className="container">
+        <StatsGrid />
+        <Tabs active={activeTab} onChange={setActiveTab} />
+        {activeTab === "当前持仓" ? (
+          <PositionsTable rows={POSITION_ROWS} />
+        ) : (
+          <AnalysisPlaceholder />
+        )}
+        <ChipRow
+          chips={POSITION_ROWS.map((row) => row.code)}
+          active={activeChip}
+          onSelect={setActiveChip}
+        />
+        <TradesTable rows={TRADE_ROWS} />
+      </div>
       <div className="fab" onClick={() => alert(`为 ${activeChip || "新"} 标的添加交易（占位）`)}>
         +
       </div>
-    </div>
+    </>
   );
 }
