@@ -4,6 +4,17 @@
 
 :root {
   color-scheme: dark;
+  --topbar-bg: #0a6b55;
+  --topbar-accent: #17c27e;
+  --topbar-text: #ffffff;
+  --topbar-btntext: #0a3a2f;
+}
+
+html,
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
