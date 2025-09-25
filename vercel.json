@@ -1,6 +1,15 @@
 {
   "version": 2,
-  "framework": "nextjs",
-  "buildCommand": "next build",
-  "outputDirectory": ".next"
+  "builds": [
+    {
+      "src": "apps/trade-logger/next.config.js",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "apps/trade-logger/$1"
+    }
+  ]
 }
