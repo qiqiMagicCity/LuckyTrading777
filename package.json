@@ -1,0 +1,9 @@
+{
+  "name": "luckytrading777",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "npx serve -s .",
+    "build": "echo 'static site'"
+  }
+}
