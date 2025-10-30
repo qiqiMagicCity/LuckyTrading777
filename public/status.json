@@ -1,5 +1,5 @@
 {
   "name": "LuckyTrading777",
   "status": "ok",
-  "time": "${new Date().toISOString()}"
+  "note": "static fallback status for CDN"
 }
